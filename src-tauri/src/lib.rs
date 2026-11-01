@@ -382,6 +382,9 @@ pub fn run() {
             commands::handlers::handles_handle_items,
             // WFInventory commands
             commands::wf_inventory::wf_inventory_get_rivens,
+            commands::wf_inventory::wf_inventory_get_items,
+            commands::wf_inventory::wf_inventory_get_item_market,
+            commands::wf_inventory::wf_inventory_get_riven_market,
             commands::wf_inventory::wf_inventory_get_syndicates,
             commands::wf_inventory::wf_inventory_update,
         ])

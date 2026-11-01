@@ -47,19 +47,22 @@ impl InventorySource for WFInvProfileSource {
     fn update(&self, root: &Arc<Mutex<WarframeRootObject>>) -> Result<(), Error> {
         let parsed = block_on_async(self.fetch())?;
 
-        let mut root = root.lock().map_err(|_| {
-            Error::new(
-                "WFInvProfileSource:Lock",
-                "Root mutex poisoned",
-                get_location!(),
-            )
-        })?;
+        {
+            let mut root = root.lock().map_err(|_| {
+                Error::new(
+                    "WFInvProfileSource:Lock",
+                    "Root mutex poisoned",
+                    get_location!(),
+                )
+            })?;
+            *root = parsed;
+        }
         info(
             format!("{COMPONENT}:Update:Complete"),
             "Profile data updated",
             &LoggerOptions::default(),
         );
-        *root = parsed;
+        crate::send_event!(crate::types::UIEvent::RefreshWfInventory, serde_json::json!({}));
         Ok(())
     }
 

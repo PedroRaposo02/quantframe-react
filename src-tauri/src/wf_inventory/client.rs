@@ -59,12 +59,12 @@ impl WFInventoryState {
             .get_or_init(|| SyndicateModule::new(self.clone()));
     }
 
-    // pub fn item(&self) -> Arc<ItemModule> {
-    //     self.item_module
-    //         .get()
-    //         .expect("ItemModule not initialized")
-    //         .clone()
-    // }
+    pub fn item(&self) -> Arc<ItemModule> {
+        self.item_module
+            .get()
+            .expect("ItemModule not initialized")
+            .clone()
+    }
 
     pub fn riven(&self) -> Arc<RivenModule> {
         self.riven_module

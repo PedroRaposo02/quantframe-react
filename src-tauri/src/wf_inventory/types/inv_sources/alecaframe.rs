@@ -54,19 +54,22 @@ impl InventorySource for WFInvAlecaframeSource {
         };
         let parsed = block_on_async(load_inventory(&path))?;
 
-        let mut root = root.lock().map_err(|_| {
-            Error::new(
-                "WFInvAlecaframeSource:Lock",
-                "Root mutex poisoned",
-                get_location!(),
-            )
-        })?;
+        {
+            let mut root = root.lock().map_err(|_| {
+                Error::new(
+                    "WFInvAlecaframeSource:Lock",
+                    "Root mutex poisoned",
+                    get_location!(),
+                )
+            })?;
+            *root = parsed;
+        }
         info(
             format!("{}:Update:Complete", COMPONENT),
             "Data file modified - root updated",
             &LoggerOptions::default(),
         );
-        *root = parsed;
+        crate::send_event!(crate::types::UIEvent::RefreshWfInventory, serde_json::json!({}));
         Ok(())
     }
 

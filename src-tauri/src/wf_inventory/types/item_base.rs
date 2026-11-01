@@ -87,4 +87,32 @@ impl WFInvItemBase {
             .set_property_value("colour".to_string(), syndicate.icon_colour.clone());
         Ok(item)
     }
+
+    /// Builds an owned-inventory item (a non-riven mod or a regular tradable item like a prime
+    /// part/relic/resource) from its unique_name and a pre-aggregated owned quantity.
+    pub fn from_raw(
+        unique_name: &str,
+        quantity: i64,
+        sub_type: Option<SubType>,
+        cache: &CacheState,
+    ) -> Result<Self, Error> {
+        let info = cache.tradable_item().get_by(unique_name)?;
+        let mut item = WFInvItemBase::default();
+
+        item.id = info.wfm_id.clone();
+        item.name = info.name.clone();
+        item.unique_name = info.unique_name.clone();
+        item.wfm_url = info.wfm_url.clone();
+        item.quantity = quantity;
+        item.sub_type = sub_type;
+
+        item.properties
+            .set_property_value("icon".to_string(), info.icon.clone());
+        item.properties
+            .set_property_value("tags".to_string(), info.tags.clone());
+        item.properties
+            .set_property_value("bulk_tradable".to_string(), info.bulk_tradable);
+
+        Ok(item)
+    }
 }

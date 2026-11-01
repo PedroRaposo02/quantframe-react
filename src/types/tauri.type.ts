@@ -1,4 +1,5 @@
 import { ItemRiven, MinMaxDto, PriceHistory, RivenAttribute, UserStatus } from ".";
+import { WFMarketTypes } from "./warframeMarket.type";
 
 export namespace TauriTypes {
   //--------------------------------------------------------------------------------
@@ -39,6 +40,7 @@ export namespace TauriTypes {
     RefreshWfmOrders = "LiveScraper:RefreshWfmOrders",
     OnDeleteWfmOrders = "Wfm:OnDeleteOrders",
     RefreshWfmAuctions = "LiveScraper:RefreshWfmAuctions",
+    RefreshWfInventory = "WfInventory:Refresh",
     RefreshTransactions = "Transaction:RefreshTransactions",
     OnDeleteWfmAuctions = "Wfm:OnDeleteAuctions",
     OnNotify = "App:OnNotify",
@@ -999,6 +1001,22 @@ export namespace TauriTypes {
       total: number;
     }>[];
   };
+  export type WFInvItemControllerGetListData = PaginatedDto & {
+    results?: WFInvItemBase<{
+      icon: string;
+      tags: string[];
+      bulk_tradable: boolean;
+      is_in_stock: boolean;
+    }>[];
+  };
+  export interface WFItemMarketResult {
+    buy: WFMarketTypes.Order[];
+    sell: WFMarketTypes.Order[];
+  }
+  export interface WFRivenMarketResult {
+    top: WFMarketTypes.Auction[];
+    top_ingame: WFMarketTypes.Auction[];
+  }
 
   //--------------------------------------------------------------------------------
   //  EE Log

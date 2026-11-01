@@ -1967,6 +1967,21 @@
           }
         }
       },
+      "quick_sell": {
+        "title": "Quick Sell",
+        "labels": {
+          "price": "List Price",
+          "quantity": "Quantity",
+          "top_orders": "Top Live Sell Orders",
+          "top_auctions": "Top Similar Rivens",
+          "top_auctions_ingame": "Top Similar Rivens (In-Game Only)",
+          "no_results": "No listings found"
+        },
+        "buttons": {
+          "confirm": "List for Sale",
+          "cancel": "Cancel"
+        }
+      },
       "riven_details": {
         "tabs": {
           "overview": {
@@ -2822,6 +2837,24 @@
             "arch": "Archwing",
             "veiled": "Veiled",
             "unveiled": "Unveiled"
+          }
+        },
+        "items": {
+          "title": "Items",
+          "filters": {
+            "all": "All",
+            "mods": "Mods",
+            "arcanes": "Arcanes",
+            "relics": "Relics",
+            "parts": "Parts",
+            "other": "Other"
+          },
+          "item_card": {
+            "owned": "Owned: {{quantity}}",
+            "rank": "Rank: {{rank}}",
+            "sell_button": "Sell",
+            "in_stock": "Already in stock",
+            "not_in_stock": "Not yet in stock"
           }
         }
       }

@@ -64,6 +64,9 @@ pub struct WarframeRootObject {
     #[serde(rename = "Recipes", default)]
     pub recipes: Vec<WFInvItemRaw>,
 
+    #[serde(rename = "MiscItems", default)]
+    pub misc_items: Vec<WFInvItemRaw>,
+
     #[serde(rename = "Affiliations", default)]
     pub affiliations: Vec<WFInvAffiliation>,
 }
@@ -90,6 +93,7 @@ impl Default for WarframeRootObject {
             raw_upgrades: vec![],
             upgrades: vec![],
             recipes: vec![],
+            misc_items: vec![],
             affiliations: vec![],
         }
     }

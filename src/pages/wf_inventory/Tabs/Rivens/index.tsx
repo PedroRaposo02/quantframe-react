@@ -20,6 +20,8 @@ import { RivenGrade } from "@components/DataDisplay/RivenGrade";
 import { DisplayPlatinum } from "@components/DataDisplay/DisplayPlatinum";
 import { useState } from "react";
 import api from "@api/index";
+import { modals } from "@mantine/modals";
+import { QuickSellModal } from "@components/Modals/QuickSell";
 
 interface RivenPanelProps {
   isActive: boolean;
@@ -139,9 +141,33 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
           bought: 0,
         });
         break;
-      case "unveiled":
-        console.warn("Unveiled rivens cannot be added directly. Please add the veiled version of the riven and then unveil it.");
+      case "unveiled": {
+        const id = modals.open({
+          size: "lg",
+          withCloseButton: true,
+          children: (
+            <QuickSellModal
+              kind="riven"
+              riven={riven}
+              onConfirm={async (price) => {
+                await createMutation.mutateAsync({
+                  raw: riven.name,
+                  mod_name: riven.mod_name,
+                  attributes: riven.attributes,
+                  mastery_rank: riven.mastery_rank,
+                  re_rolls: riven.re_rolls,
+                  polarity: riven.polarity,
+                  rank: riven.sub_type?.rank || 0,
+                  bought: 0,
+                  min_price: price,
+                } as any);
+                modals.close(id);
+              }}
+            />
+          ),
+        });
         break;
+      }
       default:
         console.error("Unknown riven type:", riven.riven_type);
     }
@@ -242,7 +268,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
               headerLeft={{
                 hide: riven.properties?.price === undefined,
                 fz: "lg",
-                i18nKey: `components.riven_preview.types.${riven.riven_type}.header_left`,
+                i18nKey: `components.riven_preview.types.veiled.header_left`,
                 values: {
                   price: riven.properties?.price || 0,
                 },
@@ -254,16 +280,18 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
               }}
               headerRight={
                 <>
-                  {riven.riven_type == "veiled" && <RivenGrade value={riven.properties.grade || "unknown"} pos={"absolute"} right={10} size={35} />}
+                  {(riven.riven_type == "veiled" || riven.riven_type == "unveiled") && (
+                    <RivenGrade value={riven.properties.grade || "unknown"} pos={"absolute"} right={10} size={35} />
+                  )}
                 </>
               }
               renderBody={() => (
                 <>
-                  {riven.riven_type == "veiled" &&
+                  {(riven.riven_type == "veiled" || riven.riven_type == "unveiled") &&
                     riven.attributes.map((attr) => (
                       <RivenAttribute key={attr.url_name} i18nKey="full" groupProps={{ p: 1 }} value={attr} hideDetails centered hideGrade />
                     ))}
-                  {riven.riven_type != "veiled" && (
+                  {riven.riven_type == "pre-veiled" && (
                     <Center h={"100%"}>
                       <Text>{riven.properties.challenge_description_with_complication}</Text>
                     </Center>
@@ -272,7 +300,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
               )}
               footerLeft={{
                 fz: "lg",
-                i18nKey: `components.riven_preview.types.${riven.riven_type}.footer_left`,
+                i18nKey: `components.riven_preview.types.${riven.riven_type === "pre-veiled" ? "pre-veiled" : "veiled"}.footer_left`,
                 values: {
                   quantity: riven.quantity || 1,
                   rank: riven.sub_type?.rank || 0,
@@ -282,7 +310,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
               }}
               footerCenter={
                 <Group gap={3}>
-                  {riven.riven_type === "veiled" && (
+                  {(riven.riven_type === "veiled" || riven.riven_type === "unveiled") && (
                     <ActionWithTooltip
                       icon={faAdd}
                       color={riven.properties?.is_in_stock ? "var(--mantine-color-green-6)" : "var(--mantine-color-red-6)"}
@@ -292,13 +320,13 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
                       onClick={async () => await HandleAddRiven(riven)}
                     />
                   )}
-                  {riven.riven_type === "veiled" && <RivenPriceButton riven={riven} />}
+                  {(riven.riven_type === "veiled" || riven.riven_type === "unveiled") && <RivenPriceButton riven={riven} />}
                 </Group>
               }
               footerRight={{
-                hide: riven.riven_type != "veiled",
+                hide: riven.riven_type != "veiled" && riven.riven_type != "unveiled",
                 fz: "lg",
-                i18nKey: `components.riven_preview.types.${riven.riven_type}.footer_right`,
+                i18nKey: `components.riven_preview.types.veiled.footer_right`,
                 values: { mastery: riven.mastery_rank },
               }}
             />

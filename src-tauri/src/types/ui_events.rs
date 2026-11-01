@@ -19,6 +19,7 @@ pub enum UIEvent {
     OnDeleteWfmAuctions,
     RefreshTransactions,
     RefreshWfmAuctions,
+    RefreshWfInventory,
     OnNotify,
     OnWfmChatMessage,
 }
@@ -41,6 +42,7 @@ impl UIEvent {
             UIEvent::OnDeleteWfmOrders => "Wfm:OnDeleteOrders",
             UIEvent::OnDeleteWfmAuctions => "Wfm:OnDeleteAuctions",
             UIEvent::RefreshWfmAuctions => "Wfm:RefreshAuctions",
+            UIEvent::RefreshWfInventory => "WfInventory:Refresh",
             UIEvent::OnNotify => "App:OnNotify",
             UIEvent::OnWfmChatMessage => "Wfm:OnChatMessage",
         }

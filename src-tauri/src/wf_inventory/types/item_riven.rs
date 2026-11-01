@@ -60,48 +60,17 @@ impl WFInvItemRiven {
         Ok(riven)
     }
 
+    /// Unveiled rivens have the same compat/mod_rank/buffs/curses/polarity shape in their
+    /// fingerprint as veiled ones - the only difference the raw inventory data uses to tell
+    /// them apart is the presence of a (now-completed) unveil challenge record. Stats/pricing
+    /// are populated identically either way.
     fn populate_unveiled(
         &mut self,
-        _raw: &WFInvItemRaw,
-        _fingerprint: &UpgradeFingerprint,
-        _cache: &CacheState,
+        raw: &WFInvItemRaw,
+        fingerprint: &UpgradeFingerprint,
+        cache: &CacheState,
     ) -> Result<(), Error> {
-        // let challenge = fingerprint.challenge.clone().ok_or_else(|| {
-        //     Error::new(
-        //         format!("{}:Unveiled", COMPONENT),
-        //         "Unveiled riven missing challenge data",
-        //         get_location!(),
-        //     )
-        // })?;
-
-        // let mod_data = cache.mods().get_by(raw.unique_name.clone())?;
-        // let challenge_data = cache
-        //     .riven()
-        //     .get_challenge_by(challenge.challenge_type.clone())?;
-
-        // self.base.name = mod_data.base.name.clone();
-        // self.base.unique_name = raw.unique_name.clone();
-        // self.base.quantity = raw.quantity;
-        // self.base.sub_type = Some(SubType::variant("revealed"));
-
-        // self.base.properties.set_property_value(
-        //     "challenge_description",
-        //     challenge_data.description.replace("|COUNT| ", ""),
-        // );
-        // self.base.properties.set_property_value(
-        //     "challenge_description_with_complication",
-        //     challenge_data
-        //         .description
-        //         .replace("|COUNT|", &challenge.required.to_string()),
-        // );
-        // self.base
-        //     .properties
-        //     .set_property_value("required", challenge.required);
-        // self.base
-        //     .properties
-        //     .set_property_value("progress", challenge.progress);
-
-        Ok(())
+        self.populate_identified(raw, fingerprint, cache)
     }
     fn populate_pre_veiled(&mut self, raw: &WFInvItemRaw, cache: &CacheState) -> Result<(), Error> {
         let mod_data = cache.mods().get_by(raw.unique_name.clone())?;
@@ -122,6 +91,14 @@ impl WFInvItemRiven {
         Ok(())
     }
     fn populate_veiled(
+        &mut self,
+        raw: &WFInvItemRaw,
+        fingerprint: &UpgradeFingerprint,
+        cache: &CacheState,
+    ) -> Result<(), Error> {
+        self.populate_identified(raw, fingerprint, cache)
+    }
+    fn populate_identified(
         &mut self,
         raw: &WFInvItemRaw,
         fingerprint: &UpgradeFingerprint,
