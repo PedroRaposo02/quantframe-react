@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fmt::Display, vec};
 
-use crate::cache::CacheItemBase;
 use crate::enums::TradeItemType;
 use crate::{log_parser::*, utils::modules::states};
 use chrono::{DateTime, Local};
@@ -125,11 +124,7 @@ impl PlayerTrade {
     }
 
     pub fn is_set(&mut self, trade_type: TradeClassification) {
-        let items = self
-            .get_valid_items(&trade_type, vec![])
-            .iter()
-            .map(|item| CacheItemBase::new(&item.unique_name, item.quantity))
-            .collect::<Vec<_>>();
+        let items = self.get_valid_items(&trade_type, vec![]);
 
         if items.len() <= 1 {
             return;
@@ -140,15 +135,13 @@ impl PlayerTrade {
             Err(_) => return,
         };
 
-        let get_buildable_set = |recipe_only| cache.recipe().can_craft(&items, true, recipe_only);
-
-        // strict pass first, then relaxed fallback
-        let mut recipes = get_buildable_set(false).unwrap_or_default();
-        if recipes.is_empty() {
-            recipes = get_buildable_set(true).unwrap_or_default();
+        let mut owned_counts: HashMap<String, i64> = HashMap::new();
+        for item in &items {
+            *owned_counts.entry(item.unique_name.clone()).or_insert(0) += item.quantity;
         }
 
-        if recipes.is_empty() {
+        let matches = cache.tradable_item().find_matching_sets(&owned_counts);
+        if matches.is_empty() {
             return;
         }
 
@@ -158,47 +151,36 @@ impl PlayerTrade {
             _ => return,
         };
 
-        for recipe in recipes {
-            let Ok(set_item_data) = cache
-                .all_items()
-                .get_by(format!("Unique:{}", recipe.result_type))
-            else {
-                continue;
-            };
+        for (set_item, sets_formed, consumed) in matches {
+            let consumed_counts: HashMap<&String, i64> =
+                consumed.iter().map(|(name, qty)| (name, *qty)).collect();
 
-            let blueprint_name = if recipe.override_unique_name.is_empty() {
-                &recipe.base.unique_name
-            } else {
-                &recipe.override_unique_name
-            };
+            // Consume only as many parts as the number of complete sets found, so leftover
+            // parts from a partial extra set (e.g. 2 complete sets + 1 spare Chassis) survive
+            // as their own line item instead of being discarded.
+            for item in target_items.iter_mut() {
+                if let Some(qty) = consumed_counts.get(&item.unique_name) {
+                    item.quantity -= qty;
+                }
+            }
+            target_items.retain(|item| item.quantity > 0);
 
-            let ingredient_names: Vec<_> = recipe
-                .ingredients
-                .iter()
-                .flat_map(|i| [&i.from_recipe, &i.base.unique_name])
-                .collect();
-
-            target_items.retain(|item| {
-                item.unique_name != *blueprint_name
-                    && !ingredient_names.contains(&&item.unique_name)
-            });
-
-            let mut set_item = TradeItem::new(
-                &set_item_data.unique_name,
-                1,
+            let mut set_trade_item = TradeItem::new(
+                &set_item.unique_name,
+                sets_formed,
                 TradeItemType::Set,
-                set_item_data.sub_type.clone(),
+                None,
             );
 
-            set_item
+            set_trade_item
                 .properties
                 .set_property_value("tags", vec!["set".to_string()]);
 
-            set_item
+            set_trade_item
                 .properties
-                .set_property_value("item_name", set_item_data.name.clone());
+                .set_property_value("item_name", set_item.name.clone());
 
-            target_items.push(set_item);
+            target_items.push(set_trade_item);
         }
     }
 

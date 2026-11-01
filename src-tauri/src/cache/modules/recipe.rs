@@ -44,24 +44,6 @@ impl RecipeModule {
         Ok(())
     }
     /* -------------------------------------------------------------
-        Functions
-    ------------------------------------------------------------- */
-    pub fn can_craft(
-        &self,
-        items: &[CacheItemBase],
-        tradeable_only: bool,
-        from_recipe_only: bool,
-    ) -> Result<Vec<CacheRecipe>, Error> {
-        let recipes = self.get_all_items()?;
-        let mut buildable_recipes: Vec<CacheRecipe> = Vec::new();
-        for recipe in recipes {
-            if recipe.can_craft(tradeable_only, from_recipe_only, items) {
-                buildable_recipes.push(recipe);
-            }
-        }
-        Ok(buildable_recipes)
-    }
-    /* -------------------------------------------------------------
         Lookup Functions
     ------------------------------------------------------------- */
     // Get Item by various identifiers

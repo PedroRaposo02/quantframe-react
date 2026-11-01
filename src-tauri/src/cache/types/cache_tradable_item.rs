@@ -91,3 +91,11 @@ impl Default for SubType {
         }
     }
 }
+
+/// A craftable "Set" (e.g. Volt Prime Set) and the parts that make it up (e.g. Chassis,
+/// Neuroptics, Systems and Blueprint). Built dynamically from the tradable-items cache.
+#[derive(Debug, Clone)]
+pub struct CacheSetGroup {
+    pub set_item: CacheTradableItem,
+    pub parts: Vec<CacheTradableItem>,
+}
