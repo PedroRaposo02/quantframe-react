@@ -23,13 +23,13 @@ use wf_market::{
 };
 
 use crate::{
-    app::{AppState, ItemSettings, Settings},
+    app::{ItemSettings, Settings},
     cache::types::{CacheTradableItem, ItemPriceInfo},
     enums::*,
     live_scraper::*,
     send_event,
     types::*,
-    utils::{modules::states, ErrorFromExt, OrderListExt, SubTypeExt},
+    utils::{modules::states, wfm_request_queue, ErrorFromExt, OrderListExt, RequestPriority, SubTypeExt},
     DATABASE,
 };
 
@@ -158,7 +158,6 @@ pub fn knapsack(
 }
 
 pub async fn collect_interesting_items(
-    app: &AppState,
     component: impl Into<String>,
     settings: &Settings,
 ) -> Result<Vec<ItemEntry>, Error> {
@@ -244,14 +243,8 @@ pub async fn collect_interesting_items(
         }
     }
 
-    // --- Syndicate Mode --- Disabled for now, WIP
+    // --- Syndicate Mode ---
     if settings.live_scraper.has_trade_mode(TradeMode::Syndicate) {
-        let Ok(_) = app
-            .user
-            .has_permission(PermissionsFlags::from_str("syndicate_prices_search"))
-        else {
-            return Ok(interesting_items.into_values().collect());
-        };
         let items = SyndicateItemQuery::get_all(conn, SyndicateItemPaginationQueryDto::new(1, -1))
             .await
             .map_err(|e| e.with_location(get_location!()))?;
@@ -546,20 +539,21 @@ pub async fn progress_order(
         properties.get_property_value("original_update_string", String::new());
 
     if trade_operations.has("Create") && !trade_operations.has("Delete") && can_create_order {
-        match wfm_client
-            .order()
-            .create(
-                CreateOrderParams::new_with_subtype(
-                    &entry.wfm_id,
-                    order_type,
-                    post_price,
-                    quantity as u32,
-                    true,
-                    per_trade.map(|pt| pt as u32),
-                    SubTypeExt::from_entity(entry.sub_type.clone()),
-                )
-                .with_properties(json!(properties.properties)),
-            )
+        let params = CreateOrderParams::new_with_subtype(
+            &entry.wfm_id,
+            order_type,
+            post_price,
+            quantity as u32,
+            true,
+            per_trade.map(|pt| pt as u32),
+            SubTypeExt::from_entity(entry.sub_type.clone()),
+        )
+        .with_properties(json!(properties.properties));
+        let client = wfm_client.clone();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.order().create(params).await
+            })
             .await
         {
             Ok(order) => {
@@ -604,16 +598,17 @@ pub async fn progress_order(
             .with_context(json!({"cooldown": info})));
         }
 
-        match wfm_client
-            .order()
-            .update(
-                &order_id,
-                UpdateOrderParams::new()
-                    .with_platinum(post_price)
-                    .with_quantity(entry.get_quantity(order_type) as u32)
-                    .with_per_trade(per_trade.map(|pt| pt as u32))
-                    .with_properties(json!(properties.properties)),
-            )
+        let update_params = UpdateOrderParams::new()
+            .with_platinum(post_price)
+            .with_quantity(entry.get_quantity(order_type) as u32)
+            .with_per_trade(per_trade.map(|pt| pt as u32))
+            .with_properties(json!(properties.properties));
+        let client = wfm_client.clone();
+        let id = order_id.clone();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.order().update(&id, update_params).await
+            })
             .await
         {
             Ok(order) => {
@@ -641,7 +636,14 @@ pub async fn progress_order(
             }
         }
     } else if trade_operations.has("Update") && trade_operations.has("Delete") {
-        match wfm_client.order().delete(&order_id).await {
+        let client = wfm_client.clone();
+        let id = order_id.clone();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.order().delete(&id).await
+            })
+            .await
+        {
             Ok(_) => {
                 info(
                     format!("{}DeleteSuccess", component),
@@ -709,9 +711,14 @@ pub async fn fetch_and_cache_orders(
     item_url: &str,
     cache_path: Option<&Path>,
 ) -> Result<OrderList<OrderWithUser>, Error> {
-    let orders = wfm_client
-        .order()
-        .get_orders_by_item(item_url)
+    // Normal priority: this is the live scraper's own background polling, so it queues behind
+    // nothing special but yields to any High-priority (user-initiated) request waiting.
+    let wfm_client = wfm_client.clone();
+    let url = item_url.to_string();
+    let orders = wfm_request_queue()
+        .submit(RequestPriority::Normal, move || async move {
+            wfm_client.order().get_orders_by_item(&url).await
+        })
         .await
         .map_err(|e| {
             Error::from_wfm(

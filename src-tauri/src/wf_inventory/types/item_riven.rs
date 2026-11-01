@@ -119,6 +119,9 @@ impl WFInvItemRiven {
         self.base
             .properties
             .set_property_value("disposition", weapon.disposition);
+        self.base
+            .properties
+            .set_property_value("icon", weapon.icon.clone());
 
         let (buffs_total, curses_total) = fingerprint.riven_stat_totals();
         let multipliers = lookup_riven_multipliers(buffs_total, curses_total)?;

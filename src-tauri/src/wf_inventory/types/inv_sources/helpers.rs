@@ -43,5 +43,54 @@ pub fn parse_lastdata(raw: &str) -> Result<WarframeRootObject, Error> {
             value = Value::Object(merged);
         }
     }
-    serde_json::from_value(value).map_err(|e| Error::from(e))
+    let equipped_upgrade_ids = extract_equipped_upgrade_ids(&value);
+
+    let mut root: WarframeRootObject = serde_json::from_value(value).map_err(|e| Error::from(e))?;
+    root.equipped_upgrade_ids = equipped_upgrade_ids;
+    Ok(root)
+}
+
+/// Equipment categories whose `Configs[].Upgrades[]` arrays list equipped mod/arcane instance
+/// IDs. Every loadout slot across every owned piece of equipment is checked, since switching
+/// loadouts re-equips whatever's saved there - a mod saved in any config counts as equipped.
+const EQUIPMENT_KEYS: &[&str] = &[
+    "Suits",
+    "LongGuns",
+    "Pistols",
+    "Melee",
+    "Sentinels",
+    "SentinelWeapons",
+    "MechSuits",
+    "OperatorSuits",
+    "SpaceGuns",
+    "SpaceMelee",
+];
+
+fn extract_equipped_upgrade_ids(value: &Value) -> std::collections::HashSet<String> {
+    let mut ids = std::collections::HashSet::new();
+
+    for key in EQUIPMENT_KEYS {
+        let Some(items) = value.get(*key).and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for item in items {
+            let Some(configs) = item.get("Configs").and_then(|v| v.as_array()) else {
+                continue;
+            };
+            for config in configs {
+                let Some(upgrades) = config.get("Upgrades").and_then(|v| v.as_array()) else {
+                    continue;
+                };
+                for id in upgrades {
+                    if let Some(id_str) = id.as_str() {
+                        if !id_str.is_empty() {
+                            ids.insert(id_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ids
 }

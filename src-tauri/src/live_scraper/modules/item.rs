@@ -120,7 +120,7 @@ impl ItemModule {
             .await?;
 
         // Collect interesting items
-        let interesting_items = collect_interesting_items(&app, COMPONENT, &app.settings).await?;
+        let interesting_items = collect_interesting_items(COMPONENT, &app.settings).await?;
 
         // Process interesting items
         self.process_items(interesting_items, &app).await?;

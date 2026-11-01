@@ -21,7 +21,7 @@ use crate::{
     live_scraper::{is_disabled, LiveScraperState},
     send_event,
     types::*,
-    utils::{modules::states, ErrorFromExt},
+    utils::{modules::states, wfm_request_queue, ErrorFromExt, RequestPriority},
     DATABASE,
 };
 
@@ -144,9 +144,12 @@ impl RivenModule {
             let mut live_auctions = if stock_riven.is_hidden {
                 AuctionList::<AuctionWithOwner>::new(vec![])
             } else {
-                match wfm_client
-                    .auction()
-                    .search_auctions(get_filter(stock_riven))
+                let client = wfm_client.clone();
+                let filter = get_filter(stock_riven);
+                match wfm_request_queue()
+                    .submit(RequestPriority::Normal, move || async move {
+                        client.auction().search_auctions(filter).await
+                    })
                     .await
                 {
                     Ok(auctions) => auctions,
@@ -350,7 +353,13 @@ async fn apply_operations(
         )
         .with_properties(json!(properties));
 
-        match wfm_client.auction().create(params).await {
+        let client = wfm_client.clone();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.auction().create(params).await
+            })
+            .await
+        {
             Ok(auction) => {
                 info(
                     format!("{}CreateSuccess", COMPONENT),
@@ -379,7 +388,14 @@ async fn apply_operations(
             .with_buyout_price(Some(post_price as u32))
             .with_starting_price(post_price as u32)
             .with_properties(properties);
-        match wfm_client.auction().update(auction_id, params).await {
+        let client = wfm_client.clone();
+        let id = auction_id.to_string();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.auction().update(&id, params).await
+            })
+            .await
+        {
             Ok(auction) => {
                 info(
                     format!("{}UpdateSuccess", COMPONENT),
@@ -403,7 +419,14 @@ async fn apply_operations(
             }
         }
     } else if operations.has("Update") && operations.has("Delete") {
-        match wfm_client.auction().delete(auction_id).await {
+        let client = wfm_client.clone();
+        let id = auction_id.to_string();
+        match wfm_request_queue()
+            .submit(RequestPriority::Normal, move || async move {
+                client.auction().delete(&id).await
+            })
+            .await
+        {
             Ok(_) => {
                 send_event!(UIEvent::RefreshWfmAuctions, json!({"source": COMPONENT}));
                 info(

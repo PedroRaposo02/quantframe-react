@@ -970,7 +970,7 @@ export namespace TauriTypes {
     wfm_url: string;
     quantity: number;
     sub_type?: SubType;
-    properties?: Record<string, T>;
+    properties?: T;
   }
   export interface WFItemControllerGetListParams<T = any> {
     page: number;
@@ -990,6 +990,8 @@ export namespace TauriTypes {
       required?: number;
       progress?: number;
       price?: number;
+      icon?: string;
+      disposition?: number;
     }>[];
   };
   export type WFInvSyndicateControllerGetListData = PaginatedDto & {
@@ -1007,6 +1009,14 @@ export namespace TauriTypes {
       tags: string[];
       bulk_tradable: boolean;
       is_in_stock: boolean;
+      price?: number;
+      is_listed: boolean;
+      set_complete?: boolean;
+      equipped: number;
+      sellable: number;
+      is_equipped: boolean;
+      mod_effect?: string;
+      mod_ranks?: { rank: number; formatted_value: string; label: string }[];
     }>[];
   };
   export interface WFItemMarketResult {

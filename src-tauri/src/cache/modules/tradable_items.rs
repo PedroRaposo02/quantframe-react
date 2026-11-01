@@ -131,6 +131,30 @@ impl TradableItemModule {
 
         matches
     }
+
+    /// For every part that belongs to a known set group, reports whether that set is currently
+    /// complete (every part, including the main blueprint, is owned) given the provided owned
+    /// counts. Parts that aren't part of any known set are simply absent from the result.
+    pub fn set_completeness(&self, owned_counts: &HashMap<String, i64>) -> HashMap<String, bool> {
+        let groups = self.set_groups.lock().unwrap();
+        let mut result = HashMap::new();
+
+        for group in groups.iter() {
+            let is_complete = group
+                .parts
+                .iter()
+                .all(|part| owned_counts.get(&part.unique_name).copied().unwrap_or(0) > 0);
+
+            for part in &group.parts {
+                if owned_counts.contains_key(&part.unique_name) {
+                    let entry = result.entry(part.unique_name.clone()).or_insert(false);
+                    *entry = *entry || is_complete;
+                }
+            }
+        }
+
+        result
+    }
 }
 
 /// Resolves which tradable items make up a crafted "Set" (e.g. Volt Prime Set) using the naming

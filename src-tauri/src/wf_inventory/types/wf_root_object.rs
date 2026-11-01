@@ -69,6 +69,12 @@ pub struct WarframeRootObject {
 
     #[serde(rename = "Affiliations", default)]
     pub affiliations: Vec<WFInvAffiliation>,
+
+    /// Instance IDs (the raw item's `ItemId.$oid`) of every mod/arcane currently slotted into
+    /// any owned equipment's config (loadout). Computed separately in `parse_lastdata` from the
+    /// equipment arrays (Suits/LongGuns/Pistols/Melee/etc.) since those aren't otherwise parsed.
+    #[serde(skip)]
+    pub equipped_upgrade_ids: std::collections::HashSet<String>,
 }
 impl Default for WarframeRootObject {
     fn default() -> Self {
@@ -95,6 +101,7 @@ impl Default for WarframeRootObject {
             recipes: vec![],
             misc_items: vec![],
             affiliations: vec![],
+            equipped_upgrade_ids: std::collections::HashSet::new(),
         }
     }
 }

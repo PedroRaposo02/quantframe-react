@@ -606,7 +606,10 @@
       "order_type": "Order Type",
       "disposition": "Disposition",
       "endo": "Endo",
-      "riven_grade": "Riven Grade"
+      "riven_grade": "Riven Grade",
+      "name": "Name",
+      "quantity": "Quantity",
+      "price": "Price"
     }
   },
   "enums": {
@@ -2822,6 +2825,7 @@
             "footer_center": "<stock/>",
             "get_price": "Estimate price",
             "price_unavailable": "Price unavailable",
+            "price_rate_limited": "Rate limited by warframe.market - wait a bit and try again",
             "stock_status": {
               "found": "Found in inventory",
               "not_found": "Not found in inventory"
@@ -2847,14 +2851,37 @@
             "arcanes": "Arcanes",
             "relics": "Relics",
             "parts": "Parts",
-            "other": "Other"
+            "other": "Other",
+            "min_quantity": "Min. owned",
+            "min_price": "Min. sell price: {{price}}",
+            "listed_all": "All",
+            "listed": "Listed",
+            "not_listed": "Not Listed",
+            "sets_all": "All",
+            "sets_complete": "Complete Sets",
+            "sets_incomplete": "Incomplete Sets",
+            "equipped_all": "All",
+            "equipped": "Equipped",
+            "not_equipped": "Not Equipped",
+            "reserve_quantity": "Always keep",
+            "reserve_quantity_description": "Copies held back from selling, on top of equipped ones"
           },
           "item_card": {
             "owned": "Owned: {{quantity}}",
             "rank": "Rank: {{rank}}",
-            "sell_button": "Sell",
+            "price": "~{{price}} plat",
+            "sell_button": "Sell ({{count}})",
             "in_stock": "Already in stock",
-            "not_in_stock": "Not yet in stock"
+            "not_in_stock": "Not yet in stock",
+            "set_complete": "Set Complete",
+            "set_incomplete": "Set Incomplete",
+            "equipped": "Equipped x{{count}}",
+            "nothing_sellable": "All copies are equipped or reserved"
+          },
+          "zoom": {
+            "current_effect": "Current: {{effect}}",
+            "rank": "Rank",
+            "effect": "Effect"
           }
         }
       }

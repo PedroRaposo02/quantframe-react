@@ -13,6 +13,7 @@ use wf_market::{
 
 use crate::utils::ErrorFromExt;
 use crate::utils::modules::states;
+use crate::utils::{wfm_request_queue, RequestPriority};
 use crate::wf_inventory::WFInventoryState;
 use crate::wf_inventory::WFItemPaginationDto;
 use crate::{track_event, DATABASE};
@@ -80,10 +81,16 @@ pub async fn wf_inventory_get_item_market(
         filters = filters.with_rank(rank as u32);
     }
 
-    let top = app
-        .wfm_client
-        .order()
-        .get_top_orders_by_item(&wfm_url, Some(filters))
+    // High priority: the user is actively waiting on this one result, so it jumps ahead of
+    // whatever the live scraper has queued rather than waiting its turn behind it.
+    let item_url = wfm_url.clone();
+    let top = wfm_request_queue()
+        .submit(RequestPriority::High, move || async move {
+            app.wfm_client
+                .order()
+                .get_top_orders_by_item(&item_url, Some(filters))
+                .await
+        })
         .await
         .map_err(|e| {
             Error::from_wfm(
@@ -129,10 +136,15 @@ pub async fn wf_inventory_get_riven_market(
         filter = filter.with_negative_stats(vec![negative]);
     }
 
-    let mut overall = app
-        .wfm_client
-        .auction()
-        .search_auctions(filter.clone())
+    // A single search covers both lists: each auction already carries the seller's online
+    // status, so "in-game only" is a local filter on this one response instead of a second
+    // network request (every call here was eating into warframe.market's rate limit twice).
+    // High priority: the user is actively waiting on this, so it jumps ahead of the live
+    // scraper's queued background requests instead of waiting its turn behind them.
+    let mut overall = wfm_request_queue()
+        .submit(RequestPriority::High, move || async move {
+            app.wfm_client.auction().search_auctions(filter).await
+        })
         .await
         .map_err(|e| {
             Error::from_wfm(
@@ -144,20 +156,8 @@ pub async fn wf_inventory_get_riven_market(
         })?;
     overall.sort_by_platinum();
 
-    let mut ingame = app
-        .wfm_client
-        .auction()
-        .search_auctions(filter.with_user_activity(StatusType::InGame))
-        .await
-        .map_err(|e| {
-            Error::from_wfm(
-                "WFInventory:GetRivenMarket",
-                format!("Failed to search in-game auctions for weapon {}", weapon_url),
-                e,
-                get_location!(),
-            )
-        })?;
-    ingame.sort_by_platinum();
+    let mut ingame = overall.clone();
+    ingame.filter_user_status(StatusType::InGame, false);
 
     Ok(WFRivenMarketResult {
         top: overall.take_top(5),

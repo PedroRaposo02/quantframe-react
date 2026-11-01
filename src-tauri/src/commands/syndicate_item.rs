@@ -28,24 +28,6 @@ pub async fn syndicate_item_import_items(
     app: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<i64, Error> {
     let app = app.lock()?.clone();
-    if !app
-        .user
-        .has_permission(PermissionsFlags::SyndicatePricesSearch)?
-    {
-        let err = Error::new(
-            "Command::SyndicateItemImportItems",
-            "User does not have permission to search syndicate prices",
-            get_location!(),
-        );
-        track_event!(
-            EventType::SyndicateItemImport,
-            [
-                ("success", "false".to_string()),
-                ("error_type", "permission_denied".to_string()),
-            ]
-        );
-        return Err(err);
-    }
     let settings = &app.settings.live_scraper.syndicate.wts;
     let mut query = SyndicateItemPricePaginationQueryDto::new(1, -1);
     query.syndicates = FieldChange::Value(settings.get_syndicate_ids());

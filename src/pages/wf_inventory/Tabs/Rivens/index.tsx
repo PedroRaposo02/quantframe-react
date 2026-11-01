@@ -14,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CompactSortSelect } from "@components/Shared/CompactSortSelect";
 import { ExpandableButton } from "@components/Shared/ExpandableButton";
 import { PreviewCard } from "@components/Shared/PreviewCard";
+import { TextTranslate } from "@components/Shared/TextTranslate";
 import { RivenAttribute } from "@components/DataDisplay/RivenAttribute";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { RivenGrade } from "@components/DataDisplay/RivenGrade";
@@ -55,31 +56,42 @@ const RivenPriceButton: React.FC<RivenPriceButtonProps> = ({ riven }) => {
   const [loading, setLoading] = useState(false);
   const [price, setPrice] = useState<number | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
 
-  const useTranslate = (key: string) => useTranslatePages(`wf_inventory.tabs.riven.riven_card.${key}`);
+  const useTranslate = (key: string, context?: { [key: string]: any }) => useTranslatePages(`wf_inventory.tabs.riven.riven_card.${key}`, context);
   const getPriceLabel = useTranslate("get_price");
   const unavailableLabel = useTranslate("price_unavailable");
+  const rateLimitedLabel = useTranslate("price_rate_limited");
 
   const HandleGetPrice = async () => {
     setLoading(true);
     setUnavailable(false);
+    setRateLimited(false);
     try {
-      const estimate = await api.riven.predictPrice({
-        weapon: riven.wfm_url || riven.name,
-        re_rolls: riven.re_rolls,
-        positives: riven.attributes.filter((attr) => attr.positive).map((attr) => attr.wfmUrl),
-        negative: riven.attributes.find((attr) => !attr.positive)?.wfmUrl,
-      });
-      if (estimate) {
-        setPrice(estimate.price);
+      const positives = riven.attributes.filter((attr) => attr.positive).map((attr) => attr.wfmUrl);
+      const negative = riven.attributes.find((attr) => !attr.positive)?.wfmUrl;
+      const market = await api.wf_inventory.getRivenMarket(riven.wfm_url, positives, negative);
+      // Prefer the lowest price among sellers currently online in-game (actually buyable right
+      // now); fall back to the lowest listed price overall if nobody comparable is online.
+      const lowestIngame = market.top_ingame[0] ? market.top_ingame[0].buyout_price ?? market.top_ingame[0].starting_price : undefined;
+      const lowestOverall = market.top[0] ? market.top[0].buyout_price ?? market.top[0].starting_price : undefined;
+      const lowest = lowestIngame ?? lowestOverall;
+      if (lowest !== undefined) {
+        setPrice(lowest);
       } else {
         setPrice(null);
         setUnavailable(true);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setPrice(null);
-      setUnavailable(true);
+      // warframe.market's Cloudflare rate limit: too many searches in a short window. Surface
+      // this distinctly so it doesn't look like a permanent failure.
+      if (e?.type === "TooManyRequests" || /too many requests/i.test(e?.cause ?? "")) {
+        setRateLimited(true);
+      } else {
+        setUnavailable(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -93,7 +105,7 @@ const RivenPriceButton: React.FC<RivenPriceButtonProps> = ({ riven }) => {
         actionProps={{ size: "sm" }}
         iconProps={{ size: "xs" }}
         loading={loading}
-        tooltip={unavailable ? unavailableLabel : getPriceLabel}
+        tooltip={rateLimited ? rateLimitedLabel : unavailable ? unavailableLabel : getPriceLabel}
         onClick={HandleGetPrice}
       />
       {price !== null && <DisplayPlatinum value={Math.round(price)} size="sm" />}
@@ -273,11 +285,18 @@ export const RivenPanel = ({ isActive }: RivenPanelProps) => {
                   price: riven.properties?.price || 0,
                 },
               }}
-              headerCenter={{
-                fz: "lg",
-                i18nKey: "components.riven_preview.riven_name",
-                values: { name: riven.name, mod_name: upperFirst(riven.mod_name) },
-              }}
+              headerCenter={
+                <Group gap={6} wrap="nowrap" justify="center">
+                  {(riven.riven_type == "veiled" || riven.riven_type == "unveiled") && riven.properties?.icon && (
+                    <Image src={`https://warframe.market/static/assets/${riven.properties.icon}`} fallbackSrc="/question.png" w={24} h={24} fit="contain" />
+                  )}
+                  <TextTranslate
+                    fz="lg"
+                    i18nKey="components.riven_preview.riven_name"
+                    values={{ name: riven.name, mod_name: upperFirst(riven.mod_name) }}
+                  />
+                </Group>
+              }
               headerRight={
                 <>
                   {(riven.riven_type == "veiled" || riven.riven_type == "unveiled") && (
